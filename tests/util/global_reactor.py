@@ -67,6 +67,7 @@ class ThreadedReactor(threading.Thread):
     @classmethod
     def start_reactor(cls):
         cls._threaded_reactor = ThreadedReactor()
+        cls._threaded_reactor.switches = {}
 
         switch_core = CiscoSwitchCore(
             SwitchConfiguration(cisco_switch_ip, name="my_switch", privileged_passwords=[cisco_privileged_password],
@@ -112,11 +113,12 @@ class ThreadedReactor(threading.Thread):
         SwitchSshService(juniper_qfx_copper_switch_ip, ssh_port=juniper_qfx_copper_switch_netconf_port,
                          switch_core=switch_core, users={'root': b'root'}).hook_to_reactor(cls._threaded_reactor.reactor)
 
-        switch_core = JuniperMXSwitchCore(
+        mx_switch_core = JuniperMXSwitchCore(
             SwitchConfiguration(juniper_mx_switch_ip, name="super_juniper_mx",
                                 ports=JuniperMXSwitchCore.get_default_ports()))
+        cls._threaded_reactor.switches["juniper_mx"] = mx_switch_core
         SwitchSshService(juniper_mx_switch_ip, ssh_port=juniper_mx_switch_netconf_port,
-                         switch_core=switch_core, users={'root': b'root'}).hook_to_reactor(cls._threaded_reactor.reactor)
+                         switch_core=mx_switch_core, users={'root': b'root'}).hook_to_reactor(cls._threaded_reactor.reactor)
 
         switch_core = DellSwitchCore(
             SwitchConfiguration(dell_switch_ip, name="my_switch", privileged_passwords=[dell_privileged_password],
@@ -171,6 +173,10 @@ class ThreadedReactor(threading.Thread):
     @classmethod
     def stop_reactor(cls):
         cls._threaded_reactor.stop()
+
+    @classmethod
+    def get_switch(cls, name):
+        return cls._threaded_reactor.switches[name]
 
     def __init__(self, *args, **kwargs):
         threading.Thread.__init__(self, *args, **kwargs)
